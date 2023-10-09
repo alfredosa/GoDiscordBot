@@ -19,6 +19,11 @@ func Start() {
 		return
 	}
 
+	goBot.Identify.Intents |= discordgo.IntentAutoModerationExecution
+	goBot.Identify.Intents |= discordgo.IntentMessageContent
+
+	// add rule
+
 	u, err := goBot.User("@me")
 
 	if err != nil {
@@ -28,6 +33,8 @@ func Start() {
 	BotId = u.ID
 
 	goBot.AddHandler(messageHandler)
+
+	goBot.AddHandler(automodarationHandler)
 
 	err = goBot.Open()
 
@@ -52,4 +59,9 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 	if m.Content == config.BotPrefix+"ping" {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "pong!")
 	}
+}
+
+func automodarationHandler(s *discordgo.Session, e *discordgo.AutoModerationActionExecution) {
+	fmt.Println("AutoModarationHandler called")
+
 }
