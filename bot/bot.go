@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 
 	"github.com/alfredosa/GoDiscordBot/config"
@@ -119,9 +120,55 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "pong!")
 	}
 
+	if strings.Contains(m.Content, "<@"+BotId+"> !google ") {
+		_, _ = s.ChannelMessageSend(m.ChannelID, "https://www.google.com/search?q="+PrepareURLSearch(m.Content))
+	}
+
+	// send image from youtube
+	if strings.Contains(m.Content, "<@"+BotId+"> !youtube ") {
+		_, _ = s.ChannelMessageSend(m.ChannelID, "https://www.youtube.com/results?search_query="+PrepareURLSearch(m.Content))
+		embed := &discordgo.MessageEmbed{
+			Title:       "Embed Title",
+			URL:         "https://github.com/bwmarrin/discordgo",
+			Description: "Embed Description",
+			Timestamp:   "2021-05-28",
+			Color:       0x78141b,
+			Fields: []*discordgo.MessageEmbedField{
+				{
+					Name:   "Inline field 1 title",
+					Value:  "value 1",
+					Inline: true,
+				},
+				{
+					Name:   "Inline field 2 title",
+					Value:  "value 2",
+					Inline: true,
+				},
+				{
+					Name:   "Regular field title",
+					Value:  "value 3",
+					Inline: false,
+				},
+				{
+					Name:   "Regular field 2 title",
+					Value:  "value 4",
+					Inline: false,
+				},
+			},
+		}
+		s.ChannelMessageSendEmbed(m.ChannelID, embed)
+	}
+
 	if m.Content == config.BotPrefix+"ping" {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "pong!")
 	}
+}
+
+func PrepareURLSearch(content string) string {
+	stringValueRaw := strings.Replace(content, "<@"+BotId+"> !google ", "", 1)
+	stringwoYoutube := strings.Replace(stringValueRaw, "<@"+BotId+"> !youtube ", "", 1)
+	stringPrepared := strings.Replace(stringwoYoutube, " ", "+", -1)
+	return stringPrepared
 }
 
 func automodarationHandler(s *discordgo.Session, e *discordgo.AutoModerationActionExecution) {

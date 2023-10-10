@@ -7,19 +7,21 @@ import (
 )
 
 var (
-	Token     string
-	BotPrefix string
-	ChannelID string
-	GuildId   string
+	Token        string
+	BotPrefix    string
+	ChannelID    string
+	GuildId      string
+	GoogleAPIKey string
 
 	config *Config
 )
 
 type Config struct {
-	Token     string `json:"token"`
-	BotPrefix string `json:"botPrefix"`
-	ChannelID string `json:"channelID"`
-	GuildId   string `json:"guildId"`
+	Token        string `json:"token"`
+	BotPrefix    string `json:"botPrefix"`
+	ChannelID    string `json:"channelID"`
+	GuildId      string `json:"guildId"`
+	GoogleAPIKey string `json:"googleAPIKey"`
 }
 
 // ReadConfig reads the config.json file and unmarshals it into the Config struct
@@ -46,6 +48,7 @@ func ReadConfig() error {
 	BotPrefix = config.BotPrefix
 	ChannelID = config.ChannelID
 	GuildId = config.GuildId
+	GoogleAPIKey = config.GoogleAPIKey
 
 	return nil
 }
