@@ -6,6 +6,7 @@ import (
 	"os/signal"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/alfredosa/GoDiscordBot/config"
 
@@ -126,34 +127,25 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	// send image from youtube
 	if strings.Contains(m.Content, "<@"+BotId+"> !youtube ") {
-		_, _ = s.ChannelMessageSend(m.ChannelID, "https://www.youtube.com/results?search_query="+PrepareURLSearch(m.Content))
+		preparedURL := PrepareURLSearch(m.Content)
+		currentTime := time.Now()
+		// Format the current qtime as a string using a specific layout
+		formattedTime := currentTime.Format("2006-01-02 15:04:05")
 		embed := &discordgo.MessageEmbed{
-			Title:       "Embed Title",
-			URL:         "https://github.com/bwmarrin/discordgo",
-			Description: "Embed Description",
-			Timestamp:   "2021-05-28",
+			Title:       strings.Replace(m.Content, "<@"+BotId+"> !youtube ", " ", 1),
+			URL:         "https://www.youtube.com/results?search_query=" + preparedURL,
+			Description: "Youtube Search",
+			Timestamp:   formattedTime,
 			Color:       0x78141b,
 			Fields: []*discordgo.MessageEmbedField{
 				{
-					Name:   "Inline field 1 title",
-					Value:  "value 1",
+					Name:   preparedURL,
+					Value:  "The search you performed",
 					Inline: true,
 				},
-				{
-					Name:   "Inline field 2 title",
-					Value:  "value 2",
-					Inline: true,
-				},
-				{
-					Name:   "Regular field title",
-					Value:  "value 3",
-					Inline: false,
-				},
-				{
-					Name:   "Regular field 2 title",
-					Value:  "value 4",
-					Inline: false,
-				},
+			},
+			Image: &discordgo.MessageEmbedImage{
+				URL: "https://revistabyte.es/wp-content/uploads/2022/07/que-es-un-desarrollador-de-go-y-como-convertirse-en-uno-696x416.jpg.webp",
 			},
 		}
 		s.ChannelMessageSendEmbed(m.ChannelID, embed)
