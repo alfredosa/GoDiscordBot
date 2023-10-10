@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"sync"
-	"syscall"
 
 	"github.com/alfredosa/GoDiscordBot/config"
 
@@ -16,73 +15,98 @@ var BotId string
 var goBot *discordgo.Session
 var rule *discordgo.AutoModerationRule
 
-func Start() {
-	goBot, err := discordgo.New("Bot " + config.Token)
+type Bot struct {
+	Session *discordgo.Session
+	Rule    *discordgo.AutoModerationRule
+	BotID   string
+}
 
+func NewBot() (*Bot, error) {
+	session, err := discordgo.New("Bot " + config.Token)
 	if err != nil {
-		fmt.Println(err.Error())
-		return
+		return nil, err
 	}
 
-	goBot.Identify.Intents |= discordgo.IntentAutoModerationExecution
-	goBot.Identify.Intents |= discordgo.IntentMessageContent
+	session.Identify.Intents |= discordgo.IntentAutoModerationExecution
+	session.Identify.Intents |= discordgo.IntentMessageContent
+	session.Identify.Intents |= discordgo.IntentGuildMessages
 
-	u, err := goBot.User("@me")
-
+	u, err := session.User("@me")
 	if err != nil {
-		fmt.Println(err.Error())
+		return nil, err
 	}
 
+	return &Bot{
+		Session: session,
+		BotID:   u.ID,
+	}, nil
+}
+
+func (b *Bot) CreateMessageTriggeredModRule(name string, keyword string, regex string) (string, error) {
 	enabled := true
-	rule, err := goBot.AutoModerationRuleCreate(config.GuildId, &discordgo.AutoModerationRule{
-		Name:        "Auto Moderation example",
+	rule, err := b.Session.AutoModerationRuleCreate(config.GuildId, &discordgo.AutoModerationRule{
+		Name:        name,
 		EventType:   discordgo.AutoModerationEventMessageSend,
 		TriggerType: discordgo.AutoModerationEventTriggerKeyword,
 		TriggerMetadata: &discordgo.AutoModerationTriggerMetadata{
-			KeywordFilter: []string{"*cat*"},
-			RegexPatterns: []string{"(c|b)at"},
+			KeywordFilter: []string{keyword},
+			RegexPatterns: []string{regex},
 		},
 
 		Enabled: &enabled,
 		Actions: []discordgo.AutoModerationAction{
-			{Type: discordgo.AutoModerationRuleActionBlockMessage},
+			{Type: discordgo.AutoModerationRuleActionSendAlertMessage, Metadata: &discordgo.AutoModerationActionMetadata{ChannelID: config.ChannelID}},
 		},
 	})
 
 	if err != nil {
 		fmt.Println(err.Error())
 		goBot.AutoModerationRuleDelete(config.GuildId, rule.ID)
-		panic(err)
+		return "", err
 	}
 
 	fmt.Println("Rule created with ID: " + rule.ID)
-	defer goBot.AutoModerationRuleDelete(config.GuildId, rule.ID)
+	return rule.ID, nil
+}
 
-	BotId = u.ID
-	fmt.Println("BotId: " + BotId)
-	goBot.AddHandler(messageHandler)
-	fmt.Println("messageHandler added")
-	goBot.AddHandlerOnce(automodarationHandler)
-	fmt.Println("automodarationHandler added")
+func Start() error {
+	goBot, err := NewBot()
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
+	}
 
-	err = goBot.Open()
+	ruleID, err := goBot.CreateMessageTriggeredModRule("Fuck rule", "*fuck*", "(f|d)uck")
 
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
+	}
+
+	defer goBot.Session.AutoModerationRuleDelete(config.GuildId, ruleID)
+
+	BotId = goBot.BotID
+	fmt.Println("BotId: " + BotId)
+	goBot.Session.AddHandler(messageHandler)
+	fmt.Println("messageHandler added")
+	goBot.Session.AddHandlerOnce(automodarationHandler)
+	fmt.Println("automodarationHandler added")
+
+	err = goBot.Session.Open()
+
+	if err != nil {
+		fmt.Println(err.Error())
+		return err
 	}
 
 	fmt.Println("Bot is running!")
 
-	defer goBot.Close()
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
 
-	signalChannel := make(chan os.Signal, 1)
-	signal.Notify(signalChannel, os.Interrupt, syscall.SIGTERM)
-
-	<-signalChannel
-
-	fmt.Println("Received termination signal. Cleaning up...")
-	os.Exit(0)
+	<-signalChan
+	fmt.Println("Bot is shutting down...")
+	return goBot.Session.Close()
 }
 
 func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
