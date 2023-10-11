@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/alfredosa/GoDiscordBot/config"
@@ -14,8 +13,6 @@ import (
 )
 
 var BotId string
-var goBot *discordgo.Session
-var rule *discordgo.AutoModerationRule
 
 type Bot struct {
 	Session *discordgo.Session
@@ -45,6 +42,7 @@ func NewBot() (*Bot, error) {
 }
 
 func (b *Bot) CreateMessageTriggeredModRule(name string, keyword string, regex string) (string, error) {
+	var rule *discordgo.AutoModerationRule
 	enabled := true
 	rule, err := b.Session.AutoModerationRuleCreate(config.GuildId, &discordgo.AutoModerationRule{
 		Name:        name,
@@ -57,13 +55,14 @@ func (b *Bot) CreateMessageTriggeredModRule(name string, keyword string, regex s
 
 		Enabled: &enabled,
 		Actions: []discordgo.AutoModerationAction{
+			{Type: discordgo.AutoModerationRuleActionTimeout, Metadata: &discordgo.AutoModerationActionMetadata{Duration: 60}},
 			{Type: discordgo.AutoModerationRuleActionSendAlertMessage, Metadata: &discordgo.AutoModerationActionMetadata{ChannelID: config.ChannelID}},
 		},
 	})
 
 	if err != nil {
 		fmt.Println(err.Error())
-		goBot.AutoModerationRuleDelete(config.GuildId, rule.ID)
+		b.Session.AutoModerationRuleDelete(config.GuildId, rule.ID)
 		return "", err
 	}
 
@@ -78,7 +77,7 @@ func Start() error {
 		return err
 	}
 
-	ruleID, err := goBot.CreateMessageTriggeredModRule("Fuck rule", "*fuck*", "(f|d)uck")
+	ruleID, err := goBot.CreateMessageTriggeredModRule("rust c++ rule", "i like c++, *assembly*, *c++*, I will rewritte my whole codebase in rust", "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$, ")
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -164,38 +163,23 @@ func PrepareURLSearch(content string) string {
 }
 
 func automodarationHandler(s *discordgo.Session, e *discordgo.AutoModerationActionExecution) {
-	s.ChannelMessageSend(e.ChannelID, "Congratulations! You have just triggered an auto moderation rule.\n"+
-		"The current trigger can match anywhere in the word, so even if you write the trigger word as a part of another word, it will still match.\n"+
-		"The rule has now been changed, now the trigger matches only in the full words.\n"+
-		"Additionally, when you send a message, an alert will be sent to this channel and you will be **timed out** for a minute.\n")
 
-	var counter int
-	var counterMutex sync.Mutex
-	goBot.AddHandler(func(s *discordgo.Session, e *discordgo.AutoModerationActionExecution) {
-		action := "unknown"
-		switch e.Action.Type {
-		case discordgo.AutoModerationRuleActionBlockMessage:
-			action = "block message"
-		case discordgo.AutoModerationRuleActionSendAlertMessage:
-			action = "send alert message into <#" + e.Action.Metadata.ChannelID + ">"
-		case discordgo.AutoModerationRuleActionTimeout:
-			action = "timeout"
-		}
+	if e.UserID == BotId {
+		return
+	}
 
-		counterMutex.Lock()
-		counter++
-		if counter == 1 {
-			counterMutex.Unlock()
-			s.ChannelMessageSend(e.ChannelID, "Nothing has changed, right? "+
-				"Well, since separate gateway events are fired per each action (current is "+action+"), "+
-				"you'll see a second message about an action pop up soon")
-		} else if counter == 2 {
-			counterMutex.Unlock()
-			s.ChannelMessageSend(e.ChannelID, "Now the second ("+action+") action got executed.")
-			s.ChannelMessageSend(e.ChannelID, "And... you've made it! That's the end of the example.\n"+
-				"For more information about the automod and how to use it, "+
-				"you can visit the official Discord docs: https://discord.dev/resources/auto-moderation or ask in our server: https://discord.gg/6dzbuDpSWY",
-			)
-		}
-	})
+	action := "unknown"
+	switch e.Action.Type {
+	case discordgo.AutoModerationRuleActionBlockMessage:
+		action = "block message"
+	case discordgo.AutoModerationRuleActionSendAlertMessage:
+		action = "Alert message"
+	case discordgo.AutoModerationRuleActionTimeout:
+		action = "timeout"
+	}
+
+	s.ChannelMessageSend(e.ChannelID, "You just triggered the forbidden words.\n"+
+		"Please don't do that :), you triggered ("+action+")\n"+
+		"You will be **timed out** for a minute if you do.\n"+
+		"Message that triggered the rule: "+e.Content+"\n")
 }
