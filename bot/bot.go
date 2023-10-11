@@ -77,7 +77,7 @@ func Start() error {
 		return err
 	}
 
-	ruleID, err := goBot.CreateMessageTriggeredModRule("rust c++ rule", "i like c++, *assembly*, *c++*, I will rewritte my whole codebase in rust", "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$, ")
+	ruleID, err := goBot.CreateMessageTriggeredModRule("rust c++ rule", "i like c++, *assembly*, *c++*, I love c++, *monopoly*", "^(?:[0-9]{1,3}\\.){3}[0-9]{1,3}$, ")
 
 	if err != nil {
 		fmt.Println(err.Error())
@@ -115,11 +115,6 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	// if m.content contains botid (Mentions) and "ping" then send "pong!"
-	if m.Content == "<@"+BotId+"> !ping" || m.Content == "<@"+BotId+"> ping" {
-		_, _ = s.ChannelMessageSend(m.ChannelID, "pong!")
-	}
-
 	if strings.Contains(m.Content, "<@"+BotId+"> !google ") {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "https://www.google.com/search?q="+PrepareURLSearch(m.Content))
 	}
@@ -150,9 +145,6 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSendEmbed(m.ChannelID, embed)
 	}
 
-	if m.Content == config.BotPrefix+"ping" {
-		_, _ = s.ChannelMessageSend(m.ChannelID, "pong!")
-	}
 }
 
 func PrepareURLSearch(content string) string {
