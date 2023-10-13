@@ -115,6 +115,8 @@ func messageHandler(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	// TODOS MEME, GOOGLE API
+
 	if strings.Contains(m.Content, "<@"+BotId+"> !google ") {
 		_, _ = s.ChannelMessageSend(m.ChannelID, "https://www.google.com/search?q="+PrepareURLSearch(m.Content))
 	}
